@@ -1,0 +1,2 @@
+Model,RMSE,MAE,R²,MAPE_%,RUL_Score,Accuracy_±5,Early_%,Late_%,Bias,Coverage_%,P95_Error,Residual_Std
+random_forest,40.1279,25.2498,0.7699,1.5908729728277332e+16,758371.1668,21.7725,50.5234,49.4766,3.6545,93.3706,89.6277,39.9611

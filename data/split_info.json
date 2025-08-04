@@ -1,0 +1,23 @@
+{
+  "data_stats": {
+    "total_engines": 260,
+    "total_samples": 10000,
+    "avg_samples_per_engine": 38.46153846153846,
+    "rul_stats": {
+      "count": 10000.0,
+      "mean": 123.1781,
+      "std": 83.9029078768133,
+      "min": 0.0,
+      "25%": 56.0,
+      "50%": 113.0,
+      "75%": 173.0,
+      "max": 530.0
+    }
+  },
+  "train_engines": 181,
+  "val_engines": 39,
+  "test_engines": 40,
+  "train_samples": 6967,
+  "val_samples": 1600,
+  "test_samples": 1433
+}
