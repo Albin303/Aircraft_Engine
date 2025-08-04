@@ -1,0 +1,69 @@
+================================================================================
+COMPREHENSIVE MODEL EVALUATION REPORT
+================================================================================
+Generated: 2025-08-01 14:45:33
+Models evaluated: 3
+
+OVERALL SUMMARY
+----------------------------------------
+Best model: best_model
+Best RMSE: 39.9133
+Worst RMSE: 40.1279
+Average RMSE: 39.9848
+
+MODEL: BEST_MODEL
+--------------------------------------------------
+Basic Metrics:
+  RMSE: 39.9133
+  MAE: 25.5645
+  R²: 0.7724
+  MAPE: 14848172205701066.00%
+RUL-Specific Metrics:
+  Asymmetric RUL Score: 88074258.6707
+  Accuracy within ±5 cycles: 20.5%
+  Early predictions: 51.2%
+  Late predictions: 48.8%
+  Bias: 3.304 (Optimistic)
+  Coverage probability: 93.7%
+Error Percentiles:
+  50th percentile: 15.139
+  95th percentile: 89.555
+  99th percentile: 150.912
+
+MODEL: RANDOM_FOREST
+--------------------------------------------------
+Basic Metrics:
+  RMSE: 40.1279
+  MAE: 25.2498
+  R²: 0.7699
+  MAPE: 15908729728277334.00%
+RUL-Specific Metrics:
+  Asymmetric RUL Score: 758371.1668
+  Accuracy within ±5 cycles: 21.8%
+  Early predictions: 50.5%
+  Late predictions: 49.5%
+  Bias: 3.655 (Optimistic)
+  Coverage probability: 93.4%
+Error Percentiles:
+  50th percentile: 14.002
+  95th percentile: 89.628
+  99th percentile: 152.218
+
+MODEL: GRADIENT_BOOSTING
+--------------------------------------------------
+Basic Metrics:
+  RMSE: 39.9133
+  MAE: 25.5645
+  R²: 0.7724
+  MAPE: 14848172205701066.00%
+RUL-Specific Metrics:
+  Asymmetric RUL Score: 88074258.6707
+  Accuracy within ±5 cycles: 20.5%
+  Early predictions: 51.2%
+  Late predictions: 48.8%
+  Bias: 3.304 (Optimistic)
+  Coverage probability: 93.7%
+Error Percentiles:
+  50th percentile: 15.139
+  95th percentile: 89.555
+  99th percentile: 150.912

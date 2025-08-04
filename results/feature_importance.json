@@ -1,0 +1,25 @@
+{
+  "random_forest": {
+    "Health_State": 0.6889887914982803,
+    "Cycle_Percentage": 0.10637607430408194,
+    "Cycle_Log": 0.0058521905438149915,
+    "Cycle_Squared": 0.006811862669632159,
+    "Engine_Max_Cycle": 0.09919010512217429,
+    "HPC_outlet_temperature_R_cummax": 0.003100982220801583,
+    "LPC_outlet_temperature_R_cummax": 0.002954891009082211,
+    "Fan_stall_margin_cumsum": 0.0027803203455547903,
+    "HPT_outlet_temperature_R_cumsum": 0.0025949226593695016,
+    "LPC_stall_margin": 0.010558792016969448,
+    "LPC_outlet_temperature_R_cumsum": 0.003074022100690879,
+    "HPC_outlet_temperature_R_cumsum": 0.002535819726149496,
+    "HPT_outlet_temperature_R_rolling_max_10": 0.007821735812243965,
+    "Fan_stall_margin_rolling_max_5": 0.007603607589769006,
+    "HPT_outlet_temperature_R_rolling_max_5": 0.006375454306149527,
+    "Temp_Ratio_HPC_LPC": 0.00905601557597556,
+    "Fan_stall_margin_rolling_max_10": 0.004355069734945966,
+    "HPC_outlet_temperature_R_rolling_max_10": 0.003327925637230948,
+    "LPC_outlet_temperature_R_rolling_max_10": 0.0030132368199162745,
+    "Press_Ratio_Fan": 0.014986317126048991,
+    "Fan_stall_margin_trend_2nd": 0.008641863181118275
+  }
+}

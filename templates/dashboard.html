@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Advanced Engine Health Monitoring Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    * {
+      font-family: 'Inter', sans-serif;
+    }
+    
+    .gradient-bg {
+      background: linear-gradient(135deg, #1e1b4b 0%, #3730a3 25%, #1e40af 50%, #0369a1 75%, #0284c7 100%);
+      min-height: 100vh;
+    }
+    
+    .glass-card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+    
+    .glass-card-solid {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+    
+    .hover-lift {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .hover-lift:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    .pulse-glow {
+      animation: pulseGlow 2s infinite;
+    }
+    
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
+      50% { box-shadow: 0 0 40px rgba(239, 68, 68, 0.6); }
+    }
+    
+    .slide-in-up {
+      animation: slideInUp 0.8s ease-out forwards;
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    
+    @keyframes slideInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .status-dot {
+      position: relative;
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    
+    .status-critical { background: #ef4444; }
+    .status-warning { background: #f59e0b; }
+    .status-safe { background: #10b981; }
+    
+    .status-critical::before {
+      content: '';
+      position: absolute;
+      inset: -3px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(239, 68, 68, 0.3) 0%, transparent 70%);
+      animation: pulse 2s infinite;
+    }
+    
+    .metric-card {
+      background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.9) 100%);
+    }
+    
+    .chart-container {
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(25px);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .chart-wrapper {
+      position: relative;
+      height: 280px;
+      width: 100%;
+    }
+    
+    .chart-wrapper.small {
+      height: 220px;
+    }
+    
+    .chart-wrapper.large {
+      height: 350px;
+    }
+    
+    .table-container {
+      max-height: 600px;
+      overflow-y: auto;
+      border-radius: 0 0 1rem 1rem;
+    }
+    
+    .table-row:hover {
+      background: rgba(59, 130, 246, 0.05);
+      transform: scale(1.002);
+    }
+    
+    .filter-chip {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(10px);
+    }
+    
+    .filter-chip.active {
+      background: rgba(59, 130, 246, 0.8);
+      border-color: rgba(59, 130, 246, 1);
+    }
+    
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      transform: translateX(400px);
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .notification.show {
+      transform: translateX(0);
+    }
+    
+    .floating-actions {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      z-index: 50;
+    }
+    
+    .risk-progress {
+      height: 4px;
+      border-radius: 2px;
+      position: relative;
+      overflow: hidden;
+      background: #e5e7eb;
+    }
+    
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+    
+    @media (min-width: 1024px) {
+      .dashboard-grid {
+        grid-template-columns: 2fr 1fr;
+      }
+    }
+    
+    .sidebar-charts {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    
+    /* Custom scrollbar */
+    .table-container::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .table-container::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 4px;
+    }
+    
+    .table-container::-webkit-scrollbar-thumb {
+      background: rgba(59, 130, 246, 0.5);
+      border-radius: 4px;
+    }
+    
+    .table-container::-webkit-scrollbar-thumb:hover {
+      background: rgba(59, 130, 246, 0.7);
+    }
+    
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem;
+      background: rgba(249, 250, 251, 1);
+      border-top: 1px solid rgba(229, 231, 235, 1);
+    }
+    
+    .pagination button {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid rgba(209, 213, 219, 1);
+      background: white;
+      color: rgba(75, 85, 99, 1);
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      transition: all 0.2s;
+    }
+    
+    .pagination button:hover:not(:disabled) {
+      background: rgba(59, 130, 246, 1);
+      color: white;
+      border-color: rgba(59, 130, 246, 1);
+    }
+    
+    .pagination button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .pagination button.active {
+      background: rgba(59, 130, 246, 1);
+      color: white;
+      border-color: rgba(59, 130, 246, 1);
+    }
+  </style>
+</head>
+<body class="gradient-bg">
+  <!-- Notification System -->
+  <div id="notification" class="notification">
+    <div class="glass-card rounded-lg p-4 shadow-2xl border border-white/20">
+      <div class="flex items-center space-x-3">
+        <i id="notification-icon" class="fas fa-info-circle text-blue-400"></i>
+        <span id="notification-text" class="text-white font-medium"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="p-6 border-b border-white/10">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <div class="p-3 glass-card rounded-xl">
+          <i class="fas fa-cogs text-white text-2xl"></i>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold text-white">Engine Health Monitoring</h1>
+          <p class="text-blue-200" id="last-updated">Last updated: Never</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <div class="glass-card px-4 py-2 rounded-lg">
+          <span class="text-white font-medium">System Status</span>
+          <div class="flex items-center mt-1">
+            <div class="status-dot status-safe"></div>
+            <span class="text-green-300 text-sm">Online</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="p-8 space-y-6 max-w-7xl mx-auto">
+    <!-- Key Metrics -->
+    <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 slide-in-up">
+      <div class="metric-card rounded-2xl p-6 hover-lift">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-600 text-sm font-medium">Total Engines</p>
+            <p class="text-3xl font-bold text-gray-900" id="total-engines">0</p>
+          </div>
+          <div class="p-3 bg-blue-100 rounded-xl">
+            <i class="fas fa-plane text-blue-600 text-xl"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="metric-card rounded-2xl p-6 hover-lift" id="critical-card">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-600 text-sm font-medium">Critical Engines</p>
+            <p class="text-3xl font-bold text-red-600" id="critical-engines">0</p>
+          </div>
+          <div class="p-3 bg-red-100 rounded-xl">
+            <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="metric-card rounded-2xl p-6 hover-lift">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-600 text-sm font-medium">Warning Engines</p>
+            <p class="text-3xl font-bold text-yellow-600" id="warning-engines">0</p>
+          </div>
+          <div class="p-3 bg-yellow-100 rounded-xl">
+            <i class="fas fa-exclamation-circle text-yellow-600 text-xl"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="metric-card rounded-2xl p-6 hover-lift">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-600 text-sm font-medium">Healthy Engines</p>
+            <p class="text-3xl font-bold text-green-600" id="healthy-engines">0</p>
+          </div>
+          <div class="p-3 bg-green-100 rounded-xl">
+            <i class="fas fa-check-circle text-green-600 text-xl"></i>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Filters and Search -->
+    <section class="slide-in-up" style="animation-delay: 0.1s">
+      <div class="glass-card rounded-2xl p-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div class="flex items-center space-x-4">
+            <h3 class="text-white font-semibold text-lg">
+              <i class="fas fa-filter mr-2"></i>Filters
+            </h3>
+            <div class="flex items-center space-x-2">
+              <button class="filter-chip active px-4 py-2 rounded-full text-white text-sm font-medium transition-all" 
+                      onclick="setRiskFilter('all')" id="filter-all">
+                All Engines
+              </button>
+              <button class="filter-chip px-4 py-2 rounded-full text-white text-sm font-medium transition-all" 
+                      onclick="setRiskFilter('critical')" id="filter-critical">
+                Critical
+              </button>
+              <button class="filter-chip px-4 py-2 rounded-full text-white text-sm font-medium transition-all" 
+                      onclick="setRiskFilter('warning')" id="filter-warning">
+                Warning
+              </button>
+              <button class="filter-chip px-4 py-2 rounded-full text-white text-sm font-medium transition-all" 
+                      onclick="setRiskFilter('safe')" id="filter-safe">
+                Safe
+              </button>
+            </div>
+          </div>
+          <div class="flex items-center space-x-3">
+            <div class="relative">
+              <input type="text" id="search-input" placeholder="Search engines..." 
+                     class="bg-white/20 text-white placeholder-white/70 px-4 py-2 pl-10 rounded-lg border border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-400">
+              <i class="fas fa-search absolute left-3 top-3 text-white/70"></i>
+            </div>
+            <button onclick="exportData()" class="glass-card px-4 py-2 rounded-lg text-white hover:bg-white/20 transition-colors">
+              <i class="fas fa-download mr-2"></i>Export
+            </button>
+          </div>
+        </div>
+        <div id="filter-status" class="mt-3 text-white/80 text-sm">Showing all engines</div>
+      </div>
+    </section>
+
+    <!-- Main Dashboard Grid -->
+    <div class="dashboard-grid">
+      <!-- Main Content Area -->
+      <div class="main-content">
+        <!-- Engine Risk Analysis Table -->
+        <section class="slide-in-up" style="animation-delay: 0.2s">
+          <div class="glass-card-solid rounded-2xl overflow-hidden shadow-2xl">
+            <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b">
+              <h2 class="text-xl font-bold text-gray-900 flex items-center">
+                <i class="fas fa-table mr-3 text-blue-600"></i>Engine Risk Analysis
+                <span class="ml-auto text-sm font-normal text-gray-600" id="table-info">Loading...</span>
+              </h2>
+            </div>
+            <div class="table-container">
+              <table class="min-w-full">
+                <thead class="bg-gray-50 sticky top-0 z-10">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                      Engine ID
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                      Flight Cycles
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                      Risk Level
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                      Health Status
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                      RUL (Cycles)
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                      Failure Reason
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="risk-table-body" class="divide-y divide-gray-200 bg-white">
+                  <tr>
+                    <td colspan="7" class="px-6 py-8 text-center">
+                      <div class="flex items-center justify-center space-x-2">
+                        <i class="fas fa-spinner fa-spin text-blue-600"></i>
+                        <span class="text-gray-500">Loading engine data...</span>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- Pagination -->
+            <div class="pagination" id="pagination">
+              <!-- Pagination will be generated dynamically -->
+            </div>
+          </div>
+        </section>
+
+        <!-- Health Trends Chart -->
+        <section class="slide-in-up" style="animation-delay: 0.5s">
+          <div class="chart-container rounded-2xl p-6 shadow-2xl">
+            <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+              <i class="fas fa-chart-line mr-3 text-blue-600"></i>Health Trends (Last 30 Days)
+            </h3>
+            <div class="chart-wrapper large">
+              <canvas id="healthTrendsChart"></canvas>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Sidebar Charts -->
+      <div class="sidebar-charts">
+        <!-- Risk Distribution Pie Chart -->
+        <section class="slide-in-up" style="animation-delay: 0.4s">
+          <div class="chart-container rounded-2xl p-6 shadow-2xl">
+            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+              <i class="fas fa-chart-pie mr-2 text-blue-600"></i>Risk Distribution
+            </h3>
+            <div class="chart-wrapper small">
+              <canvas id="riskPieChart"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- RUL Distribution Chart -->
+        <section class="slide-in-up" style="animation-delay: 0.3s">
+          <div class="chart-container rounded-2xl p-6 shadow-2xl">
+            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+              <i class="fas fa-chart-bar mr-2 text-blue-600"></i>RUL Distribution
+            </h3>
+            <div class="chart-wrapper small">
+              <canvas id="rulChart"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- Model Performance -->
+        <section class="slide-in-up" style="animation-delay: 0.6s">
+          <div class="chart-container rounded-2xl p-6 shadow-2xl">
+            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+              <i class="fas fa-brain mr-2 text-blue-600"></i>Model Performance
+            </h3>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="text-center p-3 bg-gray-50 rounded-lg">
+                <p class="text-gray-600 text-xs font-medium">Best Model</p>
+                <p class="text-lg font-bold text-blue-600" id="best-model">XGBoost</p>
+              </div>
+              <div class="text-center p-3 bg-gray-50 rounded-lg">
+                <p class="text-gray-600 text-xs font-medium">RMSE</p>
+                <p class="text-lg font-bold text-gray-900" id="rmse-value">12.5</p>
+              </div>
+              <div class="text-center p-3 bg-gray-50 rounded-lg">
+                <p class="text-gray-600 text-xs font-medium">MAE</p>
+                <p class="text-lg font-bold text-gray-900" id="mae-value">8.3</p>
+              </div>
+              <div class="text-center p-3 bg-gray-50 rounded-lg">
+                <p class="text-gray-600 text-xs font-medium">R² Score</p>
+                <p class="text-lg font-bold text-gray-900" id="r2-value">0.94</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <!-- Floating Actions -->
+  <div class="floating-actions">
+    <button onclick="refreshData()" class="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-2xl transition-all duration-300 hover:scale-110">
+      <i class="fas fa-sync-alt text-xl"></i>
+    </button>
+  </div>
+
+  <!-- Engine Detail Modal -->
+  <div id="engine-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="glass-card-solid rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-2xl font-bold text-gray-900" id="modal-engine-id">Engine Details</h3>
+        <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+      <div id="modal-content">
+        <!-- Modal content will be populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+<script>
+// Global variables
+let currentFilter = 'all';
+let currentSearchTerm = '';
+let dashboardData = null;
+let charts = {};
+let currentPage = 1;
+let itemsPerPage = 20;
+let filteredEngines = [];
+
+// Enhanced mock data for demonstration with more realistic engine data
+function generateMockEngines(count) {
+  const engines = [];
+  const riskCategories = ['Safe', 'Warning', 'Critical'];
+  const failureReasons = [
+    'No issues detected',
+    'High temperature detected in turbine section',
+    'Vibration anomaly in compressor stage 3',
+    'Oil pressure below normal threshold',
+    'Fuel efficiency decline - 8% below baseline',
+    'Component wear detected in bearing assembly',
+    'EGT margin reduction observed',
+    'Fan blade tip clearance increasing',
+    'Combustor liner hotspot detected',
+    'Fuel nozzle clogging indication',
+    'Starter motor current spike',
+    'Bleed valve position sensor fault',
+    'Oil filter bypass indicator active',
+    'Thrust reverser hydraulic leak',
+    'Igniter performance degrading'
+  ];
+  
+  const aircraftTypes = ['A320', 'A330', 'A350', 'B737', 'B777', 'B787'];
+  const locations = ['JFK', 'LAX', 'DXB', 'LHR', 'CDG', 'NRT', 'SIN', 'FRA'];
+  
+  for (let i = 1; i <= count; i++) {
+    // Weight the distribution to be more realistic
+    let riskCategory;
+    const rand = Math.random();
+    if (rand < 0.73) riskCategory = 'Safe';        // 73% safe
+    else if (rand < 0.91) riskCategory = 'Warning'; // 18% warning
+    else riskCategory = 'Critical';                 // 9% critical
+    
+    const failureRisk = riskCategory === 'Critical' ? 
+      Math.random() * 25 + 75 : 
+      riskCategory === 'Warning' ? 
+      Math.random() * 25 + 40 : 
+      Math.random() * 40;
+    
+    const flightCycles = Math.floor(Math.random() * 15000) + 2000;
+    const rulMultiplier = riskCategory === 'Critical' ? 0.3 : 
+                         riskCategory === 'Warning' ? 0.6 : 1.0;
+    
+    engines.push({
+      id: `ENG-${String(i).padStart(3, '0')}`,
+      Flight_cycle_number: flightCycles,
+      Failure_Risk: failureRisk,
+      Risk_Category: riskCategory,
+      Predicted_RUL: Math.floor((Math.random() * 8000 + 1000) * rulMultiplier),
+      Days_Until_Failure: Math.floor(Math.random() * 800 + 200),
+      Failure_Reason: riskCategory === 'Safe' ? 'No issues detected' : 
+                     failureReasons[Math.floor(Math.random() * (failureReasons.length - 1)) + 1],
+      Action_Required: riskCategory === 'Critical' ? 'Immediate maintenance required' : 
+                      riskCategory === 'Warning' ? 'Schedule inspection within 30 days' : 'Continue monitoring',
+      Maintenance_Priority: riskCategory === 'Critical' ? 'High' : 
+                           riskCategory === 'Warning' ? 'Medium' : 'Low',
+      Aircraft_Type: aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)],
+      Location: locations[Math.floor(Math.random() * locations.length)],
+      Last_Maintenance: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+      Next_Maintenance: new Date(Date.now() + Math.random() * 180 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+      Operating_Hours: Math.floor(flightCycles * 2.5 + Math.random() * 1000),
+      Engine_Model: `CFM56-${Math.floor(Math.random() * 3) + 5}B${Math.floor(Math.random() * 4) + 1}`
+    });
+  }
+  
+  return engines.sort((a, b) => {
+    // Sort by risk level (Critical first, then Warning, then Safe)
+    const riskOrder = { 'Critical': 3, 'Warning': 2, 'Safe': 1 };
+    if (riskOrder[a.Risk_Category] !== riskOrder[b.Risk_Category]) {
+      return riskOrder[b.Risk_Category] - riskOrder[a.Risk_Category];
+    }
+    // Then by risk percentage (highest first)
+    return b.Failure_Risk - a.Failure_Risk;
+  });
+}
+
+// Initialize dashboard with realistic data
+const mockData = {
+  summary: {
+    totalEngines: 1600,
+    criticalEngines: 0,  // Will be calculated
+    warningEngines: 0,   // Will be calculated
+    safeEngines: 0,      // Will be calculated
+    modelPerformance: {
+      bestModel: 'XGBoost Ensemble',
+      rmse: '11.2',
+      mae: '7.8',
+      r2: '0.967'
+    }
+  },
+  engines: generateMockEngines(1600),
+  lastUpdated: new Date().toISOString()
+};
+
+// Calculate actual counts
+mockData.summary.criticalEngines = mockData.engines.filter(e => e.Risk_Category === 'Critical').length;
+mockData.summary.warningEngines = mockData.engines.filter(e => e.Risk_Category === 'Warning').length;
+mockData.summary.safeEngines = mockData.engines.filter(e => e.Risk_Category === 'Safe').length;
+
+// Chart data generators
+function generateRiskChartData() {
+  const riskCounts = { Safe: 0, Warning: 0, Critical: 0 };
+  dashboardData.engines.forEach(engine => {
+    riskCounts[engine.Risk_Category]++;
+  });
+  
+  return {
+    labels: ['Safe', 'Warning', 'Critical'],
+    data: [riskCounts.Safe, riskCounts.Warning, riskCounts.Critical],
+    colors: ['#10b981', '#f59e0b', '#ef4444']
+  };
+}
+
+function generateRULChartData() {
+  const ranges = ['0-1000', '1000-2500', '2500-5000', '5000-7500', '7500+'];
+  const counts = [0, 0, 0, 0, 0];
+  
+  dashboardData.engines.forEach(engine => {
+    const rul = engine.Predicted_RUL;
+    if (rul < 1000) counts[0]++;
+    else if (rul < 2500) counts[1]++;
+    else if (rul < 5000) counts[2]++;
+    else if (rul < 7500) counts[3]++;
+    else counts[4]++;
+  });
+  
+  return {
+    labels: ranges,
+    data: counts,
+    backgroundColor: 'rgba(59, 130, 246, 0.6)',
+    borderColor: 'rgba(59, 130, 246, 1)',
+    borderWidth: 2
+  };
+}
+
+function generateHealthTrendsData() {
+  const last30Days = [];
+  const safeData = [];
+  const warningData = [];
+  const criticalData = [];
+  
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    last30Days.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+    
+    // Generate realistic trend data
+    const totalEngines = dashboardData.engines.length;
+    const baseSafe = Math.floor(totalEngines * 0.7);
+    const baseWarning = Math.floor(totalEngines * 0.2);
+    const baseCritical = Math.floor(totalEngines * 0.1);
+    
+    safeData.push(baseSafe + Math.floor(Math.random() * 10 - 5));
+    warningData.push(baseWarning + Math.floor(Math.random() * 6 - 3));
+    criticalData.push(baseCritical + Math.floor(Math.random() * 4 - 2));
+  }
+  
+  return {
+    labels: last30Days,
+    datasets: [
+      {
+        label: 'Safe',
+        data: safeData,
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        tension: 0.4,
+        fill: true
+      },
+      {
+        label: 'Warning',
+        data: warningData,
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        tension: 0.4,
+        fill: true
+      },
+      {
+        label: 'Critical',
+        data: criticalData,
+        borderColor: '#ef4444',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        tension: 0.4,
+        fill: true
+      }
+    ]
+  };
+}
+
+// Initialize dashboard
+document.addEventListener('DOMContentLoaded', function() {
+  initializeDashboard();
+  setupEventListeners();
+  
+  // Auto-refresh every 5 minutes
+  setInterval(refreshData, 300000);
+});
+
+function initializeDashboard() {
+  showNotification('Loading dashboard...', 'info');
+  // Simulate API call delay
+  setTimeout(() => {
+    dashboardData = mockData;
+    filteredEngines = dashboardData.engines.slice();
+    updateDashboard(dashboardData);
+    updateCharts();
+    updateTable();
+    showNotification('Dashboard loaded successfully', 'success');
+  }, 1500);
+}
+
+function setupEventListeners() {
+  // Search input
+  const searchInput = document.getElementById('search-input');
+  searchInput.addEventListener('input', debounce(function() {
+    currentSearchTerm = this.value;
+    currentPage = 1; // Reset to first page
+    applyFilters();
+  }, 300));
+  
+  // Modal close on outside click
+  document.getElementById('engine-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeModal();
+    }
+  });
+}
+
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+function updateDashboard(data) {
+  const summary = data.summary || {};
+  
+  // Update metrics
+  document.getElementById('total-engines').textContent = summary.totalEngines || 0;
+  document.getElementById('critical-engines').textContent = summary.criticalEngines || 0;
+  document.getElementById('warning-engines').textContent = summary.warningEngines || 0;
+  document.getElementById('healthy-engines').textContent = summary.safeEngines || 0;
+  
+  // Update model performance
+  const performance = summary.modelPerformance || {};
+  document.getElementById('best-model').textContent = performance.bestModel || '--';
+  document.getElementById('rmse-value').textContent = performance.rmse || '--';
+  document.getElementById('mae-value').textContent = performance.mae || '--';
+  document.getElementById('r2-value').textContent = performance.r2 || '--';
+  
+  // Update timestamp
+  const lastUpdated = new Date(data.lastUpdated || Date.now()).toLocaleString();
+  document.getElementById('last-updated').textContent = `Last updated: ${lastUpdated}`;
+  
+  // Update critical card glow
+  const criticalCard = document.getElementById('critical-card');
+  if (summary.criticalEngines > 0) {
+    criticalCard.classList.add('pulse-glow');
+  } else {
+    criticalCard.classList.remove('pulse-glow');
+  }
+}
+
+function updateTable() {
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const pageEngines = filteredEngines.slice(startIndex, endIndex);
+  
+  updateEngineTable(pageEngines);
+  updatePagination();
+  updateTableInfo();
+}
+
+function updateEngineTable(engines) {
+  const tbody = document.getElementById('risk-table-body');
+  
+  if (!engines.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+          <i class="fas fa-search text-4xl mb-2 opacity-50"></i>
+          <p>No engines found matching current filters</p>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  tbody.innerHTML = engines.map(engine => {
+    const riskColor = getRiskColor(engine.Failure_Risk);
+    const statusColor = getStatusColor(engine.Risk_Category);
+    
+    return `
+      <tr class="table-row transition-all duration-200 cursor-pointer" onclick="showEngineDetails('${engine.id}')">
+        <td class="px-4 py-3">
+          <div class="flex flex-col">
+            <span class="font-mono font-semibold text-gray-900 text-sm">${engine.id}</span>
+            <span class="text-xs text-gray-500">${engine.Engine_Model}</span>
+          </div>
+        </td>
+        <td class="px-4 py-3">
+          <div class="flex flex-col">
+            <span class="text-gray-900 font-medium">${engine.Flight_cycle_number.toLocaleString()}</span>
+            <span class="text-xs text-gray-500">${engine.Operating_Hours.toLocaleString()} hrs</span>
+          </div>
+        </td>
+        <td class="px-4 py-3">
+          <div class="flex items-center space-x-3">
+            <div class="flex-1">
+              <div class="risk-progress w-16 rounded-full overflow-hidden">
+                <div class="h-full transition-all duration-500" 
+                     style="width: ${Math.min(engine.Failure_Risk || 0, 100)}%; background: ${riskColor}"></div>
+              </div>
+            </div>
+            <span class="font-semibold text-sm w-12 text-right" style="color: ${riskColor}">
+              ${(engine.Failure_Risk || 0).toFixed(1)}%
+            </span>
+          </div>
+        </td>
+        <td class="px-4 py-3">
+          <div class="flex items-center">
+            <div class="status-dot ${statusColor.class}"></div>
+            <span class="font-medium text-sm" style="color: ${statusColor.color}">
+              ${engine.Risk_Category}
+            </span>
+          </div>
+        </td>
+        <td class="px-4 py-3">
+          <div class="flex flex-col">
+            <span class="text-gray-900 font-medium">${engine.Predicted_RUL.toLocaleString()}</span>
+            <span class="text-xs text-gray-500">cycles remaining</span>
+          </div>
+        </td>
+        <td class="px-4 py-3">
+          <div class="text-sm text-gray-600 max-w-xs">
+            <span class="block truncate" title="${engine.Failure_Reason}">
+              ${engine.Failure_Reason}
+            </span>
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-1
+                         ${engine.Maintenance_Priority === 'High' ? 'bg-red-100 text-red-800' :
+                           engine.Maintenance_Priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                           'bg-green-100 text-green-800'}">
+              ${engine.Maintenance_Priority} Priority
+            </span>
+          </div>
+        </td>
+        <td class="px-4 py-3">
+          <button class="text-blue-600 hover:text-blue-800 font-medium transition-colors flex items-center space-x-1 text-sm">
+            <i class="fas fa-eye"></i>
+            <span>View</span>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function updatePagination() {
+  const totalPages = Math.ceil(filteredEngines.length / itemsPerPage);
+  const pagination = document.getElementById('pagination');
+  
+  if (totalPages <= 1) {
+    pagination.innerHTML = '';
+    return;
+  }
+  
+  let paginationHTML = '';
+  
+  // Previous button
+  paginationHTML += `
+    <button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+      <i class="fas fa-chevron-left"></i>
+    </button>
+  `;
+  
+  // Page numbers
+  const startPage = Math.max(1, currentPage - 2);
+  const endPage = Math.min(totalPages, currentPage + 2);
+  
+  if (startPage > 1) {
+    paginationHTML += `<button onclick="goToPage(1)">1</button>`;
+    if (startPage > 2) {
+      paginationHTML += `<span class="px-2 text-gray-500">...</span>`;
+    }
+  }
+  
+  for (let i = startPage; i <= endPage; i++) {
+    paginationHTML += `
+      <button onclick="goToPage(${i})" ${i === currentPage ? 'class="active"' : ''}>
+        ${i}
+      </button>
+    `;
+  }
+  
+  if (endPage < totalPages) {
+    if (endPage < totalPages - 1) {
+      paginationHTML += `<span class="px-2 text-gray-500">...</span>`;
+    }
+    paginationHTML += `<button onclick="goToPage(${totalPages})">${totalPages}</button>`;
+  }
+  
+  // Next button
+  paginationHTML += `
+    <button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+      <i class="fas fa-chevron-right"></i>
+    </button>
+  `;
+  
+  pagination.innerHTML = paginationHTML;
+}
+
+function updateTableInfo() {
+  const startIndex = (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = Math.min(currentPage * itemsPerPage, filteredEngines.length);
+  const total = filteredEngines.length;
+  
+  document.getElementById('table-info').textContent = 
+    `Showing ${startIndex}-${endIndex} of ${total} engines`;
+}
+
+function goToPage(page) {
+  const totalPages = Math.ceil(filteredEngines.length / itemsPerPage);
+  if (page < 1 || page > totalPages) return;
+  
+  currentPage = page;
+  updateTable();
+}
+
+function updateCharts() {
+  const riskData = generateRiskChartData();
+  const rulData = generateRULChartData();
+  const trendsData = generateHealthTrendsData();
+  
+  // Risk Distribution Pie Chart
+  const riskCtx = document.getElementById('riskPieChart').getContext('2d');
+  if (charts.riskPie) charts.riskPie.destroy();
+  
+  charts.riskPie = new Chart(riskCtx, {
+    type: 'doughnut',
+    data: {
+      labels: riskData.labels,
+      datasets: [{
+        data: riskData.data,
+        backgroundColor: riskData.colors,
+        borderWidth: 3,
+        borderColor: '#ffffff',
+        hoverBorderWidth: 5
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            padding: 15,
+            usePointStyle: true,
+            font: { size: 11, weight: '500' }
+          }
+        }
+      },
+      cutout: '60%',
+      animation: {
+        duration: 1500,
+        easing: 'easeOutBounce'
+      }
+    }
+  });
+  
+  // RUL Histogram
+  const rulCtx = document.getElementById('rulChart').getContext('2d');
+  if (charts.rulChart) charts.rulChart.destroy();
+  
+  charts.rulChart = new Chart(rulCtx, {
+    type: 'bar',
+    data: {
+      labels: rulData.labels,
+      datasets: [{
+        label: 'Engine Count',
+        data: rulData.data,
+        backgroundColor: rulData.backgroundColor,
+        borderColor: rulData.borderColor,
+        borderWidth: rulData.borderWidth,
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'RUL Range (Cycles)',
+            font: { weight: '600', size: 11 }
+          },
+          grid: { display: false },
+          ticks: { font: { size: 10 } }
+        },
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Count',
+            font: { weight: '600', size: 11 }
+          },
+          grid: { color: 'rgba(0,0,0,0.1)' },
+          ticks: { font: { size: 10 } }
+        }
+      },
+      animation: {
+        duration: 1200,
+        easing: 'easeInOutCubic'
+      }
+    }
+  });
+  
+  // Health Trends Chart
+  const trendsCtx = document.getElementById('healthTrendsChart').getContext('2d');
+  if (charts.healthTrends) charts.healthTrends.destroy();
+  
+  charts.healthTrends = new Chart(trendsCtx, {
+    type: 'line',
+    data: trendsData,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: {
+            usePointStyle: true,
+            font: { weight: '500', size: 12 },
+            padding: 20
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Date',
+            font: { weight: '600' }
+          },
+          grid: { color: 'rgba(0,0,0,0.1)' },
+          ticks: { 
+            maxTicksLimit: 10,
+            font: { size: 10 }
+          }
+        },
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Number of Engines',
+            font: { weight: '600' }
+          },
+          grid: { color: 'rgba(0,0,0,0.1)' }
+        }
+      },
+      elements: {
+        point: {
+          radius: 3,
+          hoverRadius: 6
+        },
+        line: {
+          borderWidth: 2
+        }
+      },
+      animation: {
+        duration: 2000,
+        easing: 'easeInOutQuart'
+      }
+    }
+  });
+}
+
+function setRiskFilter(filter) {
+  currentFilter = filter;
+  currentPage = 1; // Reset to first page
+  
+  // Update active filter button
+  document.querySelectorAll('.filter-chip').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  document.getElementById(`filter-${filter}`).classList.add('active');
+  
+  applyFilters();
+}
+
+function applyFilters() {
+  if (!dashboardData) return;
+  
+  filteredEngines = dashboardData.engines.slice();
+  
+  // Apply risk filter
+  if (currentFilter !== 'all') {
+    filteredEngines = filteredEngines.filter(engine => 
+      engine.Risk_Category.toLowerCase() === currentFilter.toLowerCase()
+    );
+  }
+  
+  // Apply search filter
+  if (currentSearchTerm) {
+    const searchLower = currentSearchTerm.toLowerCase();
+    filteredEngines = filteredEngines.filter(engine =>
+      engine.id.toLowerCase().includes(searchLower) ||
+      (engine.Risk_Category || '').toLowerCase().includes(searchLower) ||
+      (engine.Failure_Reason || '').toLowerCase().includes(searchLower) ||
+      (engine.Engine_Model || '').toLowerCase().includes(searchLower) ||
+      (engine.Aircraft_Type || '').toLowerCase().includes(searchLower) ||
+      (engine.Location || '').toLowerCase().includes(searchLower)
+    );
+  }
+  
+  updateTable();
+  updateFilterStatus(filteredEngines.length, dashboardData.engines.length);
+}
+
+function updateFilterStatus(filtered, total) {
+  const statusEl = document.getElementById('filter-status');
+  if (filtered === total) {
+    statusEl.textContent = `Showing all ${total} engines`;
+  } else {
+    statusEl.textContent = `Showing ${filtered} of ${total} engines`;
+  }
+}
+
+function getRiskColor(risk) {
+  if (risk > 70) return '#ef4444';
+  if (risk > 40) return '#f59e0b';
+  return '#10b981';
+}
+
+function getStatusColor(status) {
+  switch (status?.toLowerCase()) {
+    case 'critical':
+      return { color: '#ef4444', class: 'status-critical' };
+    case 'warning':
+      return { color: '#f59e0b', class: 'status-warning' };
+    case 'safe':
+      return { color: '#10b981', class: 'status-safe' };
+    default:
+      return { color: '#6b7280', class: 'status-safe' };
+  }
+}
+
+function showEngineDetails(engineId) {
+  const engine = dashboardData.engines.find(e => e.id === engineId);
+  if (!engine) return;
+  
+  document.getElementById('modal-engine-id').textContent = `Engine ${engineId} Details`;
+  
+  const riskColor = getRiskColor(engine.Failure_Risk);
+  const statusColor = getStatusColor(engine.Risk_Category);
+  
+  const modalContent = `
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Basic Information -->
+      <div class="space-y-4">
+        <h4 class="text-lg font-semibold text-gray-900 border-b pb-2">Basic Information</h4>
+        <div class="space-y-3 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-600">Engine ID:</span>
+            <span class="font-mono font-semibold">${engine.id}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Engine Model:</span>
+            <span class="font-semibold">${engine.Engine_Model}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Aircraft Type:</span>
+            <span class="font-semibold">${engine.Aircraft_Type}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Location:</span>
+            <span class="font-semibold">${engine.Location}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Flight Cycles:</span>
+            <span class="font-semibold">${engine.Flight_cycle_number.toLocaleString()}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Operating Hours:</span>
+            <span class="font-semibold">${engine.Operating_Hours.toLocaleString()}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Risk Analysis -->
+      <div class="space-y-4">
+        <h4 class="text-lg font-semibold text-gray-900 border-b pb-2">Risk Analysis</h4>
+        <div class="space-y-3">
+          <div>
+            <div class="flex justify-between mb-2">
+              <span class="text-gray-600 text-sm">Failure Risk:</span>
+              <span class="font-semibold" style="color: ${riskColor}">${(engine.Failure_Risk || 0).toFixed(1)}%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-3">
+              <div class="h-3 rounded-full transition-all duration-500" 
+                   style="width: ${Math.min(engine.Failure_Risk || 0, 100)}%; background: ${riskColor}"></div>
+            </div>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">Health Status:</span>
+            <span class="font-semibold flex items-center">
+              <div class="status-dot ${statusColor.class} mr-2"></div>
+              ${engine.Risk_Category}
+            </span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">Maintenance Priority:</span>
+            <span class="font-semibold inline-flex items-center px-2 py-1 rounded-full text-xs
+                         ${engine.Maintenance_Priority === 'High' ? 'bg-red-100 text-red-800' :
+                           engine.Maintenance_Priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                           'bg-green-100 text-green-800'}">
+              ${engine.Maintenance_Priority}
+            </span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">Remaining Useful Life:</span>
+            <span class="font-semibold">${engine.Predicted_RUL.toLocaleString()} cycles</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">Days Until Failure:</span>
+            <span class="font-semibold">${engine.Days_Until_Failure} days</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Maintenance Information -->
+    <div class="mt-6 space-y-4">
+      <h4 class="text-lg font-semibold text-gray-900 border-b pb-2">Maintenance Schedule</h4>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div class="bg-gray-50 rounded-lg p-3">
+          <span class="text-gray-600 text-xs">Last Maintenance:</span>
+          <p class="font-medium text-gray-900">${engine.Last_Maintenance}</p>
+        </div>
+        <div class="bg-gray-50 rounded-lg p-3">
+          <span class="text-gray-600 text-xs">Next Scheduled:</span>
+          <p class="font-medium text-gray-900">${engine.Next_Maintenance}</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Failure Analysis -->
+    <div class="mt-6 space-y-4">
+      <h4 class="text-lg font-semibold text-gray-900 border-b pb-2">Issue Analysis</h4>
+      <div class="bg-gray-50 rounded-lg p-4">
+        <div class="mb-3">
+          <span class="text-gray-600 text-sm">Primary Issue:</span>
+          <p class="font-medium text-gray-900">${engine.Failure_Reason}</p>
+        </div>
+        <div>
+          <span class="text-gray-600 text-sm">Recommended Action:</span>
+          <p class="font-medium text-gray-900">${engine.Action_Required}</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Action Buttons -->
+    <div class="mt-6 flex space-x-3">
+      <button onclick="scheduleMaintenanceAlert('${engine.id}')" 
+              class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm">
+        <i class="fas fa-calendar-plus mr-2"></i>Schedule Maintenance
+      </button>
+      <button onclick="exportEngineReport('${engine.id}')" 
+              class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors text-sm">
+        <i class="fas fa-file-export mr-2"></i>Export Report
+      </button>
+    </div>
+  `;
+  
+  document.getElementById('modal-content').innerHTML = modalContent;
+  document.getElementById('engine-modal').classList.remove('hidden');
+  document.getElementById('engine-modal').classList.add('flex');
+}
+
+function closeModal() {
+  document.getElementById('engine-modal').classList.add('hidden');
+  document.getElementById('engine-modal').classList.remove('flex');
+}
+
+function scheduleMaintenanceAlert(engineId) {
+  showNotification(`Exported ${filteredEngines.length} engine records`, 'success');
+}
+
+function refreshData() {
+  showNotification('Refreshing dashboard data...', 'info');
+  
+  // Add loading animation to refresh button
+  const refreshBtn = document.querySelector('.floating-actions button');
+  const icon = refreshBtn.querySelector('i');
+  icon.classList.add('fa-spin');
+  
+  // Simulate data refresh with new data
+  setTimeout(() => {
+    const newEngines = generateMockEngines(150);
+    dashboardData = {
+      summary: {
+        totalEngines: 150,
+        criticalEngines: newEngines.filter(e => e.Risk_Category === 'Critical').length,
+        warningEngines: newEngines.filter(e => e.Risk_Category === 'Warning').length,
+        safeEngines: newEngines.filter(e => e.Risk_Category === 'Safe').length,
+        modelPerformance: {
+          bestModel: 'XGBoost Ensemble',
+          rmse: (11 + Math.random() * 2).toFixed(1),
+          mae: (7 + Math.random() * 2).toFixed(1),
+          r2: (0.95 + Math.random() * 0.02).toFixed(3)
+        }
+      },
+      engines: newEngines,
+      lastUpdated: new Date().toISOString()
+    };
+    
+    // Reset filters and pagination
+    currentPage = 1;
+    filteredEngines = dashboardData.engines.slice();
+    
+    updateDashboard(dashboardData);
+    updateCharts();
+    applyFilters(); // This will update the table with current filters
+    showNotification('Dashboard refreshed successfully', 'success');
+    
+    icon.classList.remove('fa-spin');
+  }, 2500);
+}
+
+function showNotification(message, type = 'info') {
+  const notification = document.getElementById('notification');
+  const icon = document.getElementById('notification-icon');
+  const text = document.getElementById('notification-text');
+  
+  // Set icon and colors based on type
+  icon.className = 'fas ';
+  switch (type) {
+    case 'success':
+      icon.className += 'fa-check-circle text-green-400';
+      break;
+    case 'error':
+      icon.className += 'fa-exclamation-circle text-red-400';
+      break;
+    case 'warning':
+      icon.className += 'fa-exclamation-triangle text-yellow-400';
+      break;
+    default:
+      icon.className += 'fa-info-circle text-blue-400';
+  }
+  
+  text.textContent = message;
+  notification.classList.add('show');
+  
+  // Auto-hide after 4 seconds
+  setTimeout(() => {
+    notification.classList.remove('show');
+  }, 4000);
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+  // Escape key to close modal
+  if (e.key === 'Escape') {
+    closeModal();
+  }
+  
+  // Ctrl/Cmd + R to refresh (prevent default and use our function)
+  if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+    e.preventDefault();
+    refreshData();
+  }
+  
+  // Ctrl/Cmd + E to export
+  if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+    e.preventDefault();
+    exportData();
+  }
+  
+  // Arrow keys for pagination
+  if (e.key === 'ArrowLeft' && currentPage > 1) {
+    goToPage(currentPage - 1);
+  }
+  if (e.key === 'ArrowRight') {
+    const totalPages = Math.ceil(filteredEngines.length / itemsPerPage);
+    if (currentPage < totalPages) {
+      goToPage(currentPage + 1);
+    }
+  }
+});
+
+// Add smooth scrolling for better UX
+document.documentElement.style.scrollBehavior = 'smooth';
+
+// Performance monitoring
+let performanceMetrics = {
+  loadTime: 0,
+  renderTime: 0,
+  chartRenderTime: 0
+};
+
+// Track page load performance
+window.addEventListener('load', () => {
+  performanceMetrics.loadTime = performance.now();
+  console.log('Dashboard Performance Metrics:', performanceMetrics);
+});
+</script>
+</body>
+</html>
